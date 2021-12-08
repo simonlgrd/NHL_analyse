@@ -1,0 +1,184 @@
+---
+title: "NHL_analyse"
+author: "Titouan Quintin et Simon Legrand"
+date: "08/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Problématique : définir le profils type des joueurs de champs au Hockey
+
+Import des packages
+```{r}
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(FactoMineR)
+library(factoextra)
+library(corrplot)
+```
+  
+Import de la base
+```{r}
+player_info <-
+  read.csv("D:/DataFrame/NHL/player_info.csv",encoding = "UTF-8")
+
+game_skater_stats <-
+  read.csv("D:/DataFrame/NHL/game_skater_stats.csv",encoding = "UTF-8")
+
+```
+
+
+Data cleaning
+```{r}
+#on enlève les gardiens de buts de notre étude
+player_info <- player_info %>% filter(!primaryPosition == "G")
+
+player_info$primaryPosition <- ifelse(player_info$primaryPosition =="LW" | player_info$primaryPosition =="RW","W", player_info$primaryPosition)
+player_info$primaryPosition <- as.factor(player_info$primaryPosition)
+player_info$nationality <- as.factor(player_info$nationality)
+player_info$birthDate <- as.Date(player_info$birthDate)
+player_info$shootsCatches <- as.factor(player_info$shootsCatches)
+
+```
+
+```{r}
+summary(player_info)
+summary(game_skater_stats)
+```
+```{r}
+game_skater_stats <-
+  game_skater_stats %>%
+  group_by(player_id) %>%
+  summarise(avgGoal = mean(goals),
+         avgAssists = mean(assists),
+         avgShots = mean(shots),
+         avgHits = mean(hits),
+         avgTimeOnIce = mean(timeOnIce),
+         avgPenaltyMinute = mean(penaltyMinutes),
+         avgFaceOffWin = mean(faceOffWins),
+         avgBlocked = mean(blocked)
+         )
+```
+
+
+Jointure des deux tables
+```{r}
+data <- left_join(player_info,game_skater_stats,by ="player_id")
+head(data)
+
+```
+
+
+```{r}
+summary(data)
+```
+#Description de la population
+
+
+```{r}
+hist(data$height_cm)  #+ ggtitle("Répartition de la taille des joueurs en fonction de leur poste")
+```
+
+
+
+
+
+
+
+#Analyse bivarié
+```{r}
+ggplot(data, aes(x = height_cm)) + geom_density(aes(color = primaryPosition))  + ggtitle("Répartition de la taille des joueurs en fonction de leur poste")
+
+
+ggplot(data, aes(x = weight)) + geom_density(aes(color = primaryPosition)) + ggtitle("Répartition du poid des joueurs en fonction de leur poste")
+```
+
+
+```{r}
+
+ggplot(data, aes(x = avgGoal)) + geom_boxplot(aes(color = primaryPosition)) 
+
+```
+
+
+
+Test différence de moyenne
+```{r}
+#Montrer que pas de diff entre W et C mais entre D et les autres
+#ontrer que la taille influe pas significativement
+
+```
+
+
+
+Le coté du quel le jours tire influe t-il sur son poste ?
+```{r}
+
+t <- table(data$primaryPosition,data$shootsCatches)
+t
+khi2 <- t %>% chisq.test()
+khi2$residual
+```
+
+
+
+
+
+```{r}
+ggplot(data,aes(x = weight,y = height_cm,color = primaryPosition)) + geom_point()
+```
+
+#Analyse multivarié
+
+Peut on isoler différent cluster de joueurs en fonction de leurs caractéristiques ?
+
+
+
+```{r ACP}
+dataACP <- data %>% select(height_cm,weight,avgGoal,avgAssists,avgShots,avgHits,avgTimeOnIce,avgPenaltyMinute,avgFaceOffWin,avgBlocked)
+
+res.pca <- PCA(dataACP, graph = FALSE)
+res.pca
+
+eig.val <- get_eigenvalue(res.pca)
+eig.val
+```
+
+```{r}
+fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 50))
+```
+```{r}
+var <- get_pca_var(res.pca)
+var
+```
+
+```{r}
+fviz_pca_var(res.pca, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Évite le chevauchement de texte
+             )
+
+fviz_pca_ind (res.pca, col.ind = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Évite le chevauchement de texte
+             )
+```
+
+```{r}
+corrplot(var$cos2, is.corr=FALSE)
+```
+```{r}
+
+fviz_pca_biplot(res.pca, repel = TRUE,
+                col.var = "#2E9FDF", # Couleur des variables
+                col.ind = "#696969"  # Couleur des individues
+                )
+```
+
+
+
+
