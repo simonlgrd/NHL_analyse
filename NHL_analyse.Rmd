@@ -38,6 +38,7 @@ Data cleaning
 player_info <- player_info %>% filter(!primaryPosition == "G")
 
 player_info$primaryPosition <- ifelse(player_info$primaryPosition =="LW" | player_info$primaryPosition =="RW","W", player_info$primaryPosition)
+
 player_info$primaryPosition <- as.factor(player_info$primaryPosition)
 player_info$nationality <- as.factor(player_info$nationality)
 player_info$birthDate <- as.Date(player_info$birthDate)
